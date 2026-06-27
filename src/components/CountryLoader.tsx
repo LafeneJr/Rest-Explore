@@ -4,10 +4,10 @@
 import type { LoaderFunctionArgs } from "react-router-dom";
 import { fetchCountryByCode } from "../utils/api";
 
-export async function countryLoader({ params, request }: LoaderFunctionArgs) {
+export async function countryLoader({ params }: LoaderFunctionArgs) {
   const code = params.code?.trim();
   if (!code) {
     throw new Response("Country code is required", { status: 400 });
   }
-  return fetchCountryByCode(code, request.signal);
+  return fetchCountryByCode(code);
 }

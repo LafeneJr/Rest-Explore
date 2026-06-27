@@ -1,100 +1,113 @@
 import { useEffect, useMemo, useState } from "react";
 import { CountryCard } from "../components/CountryCard";
 import { EmptyState } from "../components/EmptyState";
-import { SearchAndFilter } from "../components/SearchAndFilter"
+import { SearchAndFilter } from "../components/SearchAndFilter";
 import { Spinner } from "../components/Spinner";
-import { fetchAllCountries, type CountryLite } from "../utils/api";
-
+import {
+  fetchAllCountries,
+  type CountryLite,
+} from "../utils/api";
 
 export const Countries = () => {
-
-  const [data, setData] = useState<CountryLite[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<CountryLite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState("");
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      setLoading(true);
-      setError(null);
+    const loadCountries = async () => {
       try {
-        const res = await fetchAllCountries();
-        if (alive) setData(res);
-      } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : "Failed to load");
+        setLoading(true);
+
+        const countries =
+          await fetchAllCountries();
+
+        setData(countries);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load countries"
+        );
       } finally {
-        if (alive) setLoading(false);
+        setLoading(false);
       }
-    })();
-    return () => { alive = false; };
+    };
+
+    loadCountries();
   }, []);
 
   const filtered = useMemo(() => {
-    if (!data) return [];
-    const q = query.trim().toLowerCase();
-    return data.filter((c) => {
-      const byName = !q || c.name.common.toLowerCase().includes(q);
-      const byRegion = !region || c.region === region;
-      return byName && byRegion;
+    return data.filter((country) => {
+      const matchesName =
+        country.name
+          .toLowerCase()
+          .includes(query.toLowerCase());
+
+      const matchesRegion =
+        !region ||
+        country.region === region;
+
+      return matchesName && matchesRegion;
     });
   }, [data, query, region]);
 
+  if (loading) {
+    return <Spinner />;
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load countries"
+        subtitle={error}
+      />
+    );
+  }
+
   return (
     <section className="max-w-7xl mx-auto">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold">
+          Browse Countries
+        </h2>
 
-      <div className="mb-6 flex items-end justify-between gap-3">
-
-        <div>
-          
-          <h2 className="text-2xl font-bold">
-            Browser Countries
-          </h2>
-          <p className="opacity-75 text-sm">
-            Search and filter by region
-          </p>
-        </div>
+        <p className="opacity-75 text-sm">
+          Search and filter by region
+        </p>
       </div>
 
-      <SearchAndFilter 
+      <SearchAndFilter
         query={query}
         onQuery={setQuery}
         region={region}
         onRegion={setRegion}
       />
 
-      {loading && <Spinner />}
-
-      {loading && (
-
+      {filtered.length === 0 ? (
         <div className="mt-8">
-
-          <EmptyState title="Couldn't load countries" subtitle="error" />
-        </div>
-      )}
-
-      {!loading && !error && filtered.length === 0 && (
-
-        <div className="mt-8">
-          <EmptyState title="No matches" subtitle="Try a different search or region." />
-        </div>
-      )}
-
-      <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filtered.map((c) => (
-          <CountryCard
-          key={c.cca3}
-          code={c.cca3}
-          name={c.name.common}
-          region={c.region}
-          capital={c.capital}
-          population={c.population}
-          flag={c.flags.png}
+          <EmptyState
+            title="No matches found"
+            subtitle="Try a different search or region."
           />
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filtered.map((country) => (
+            <CountryCard
+              key={country.code}
+              code={country.code}
+              name={country.name}
+              region={country.region}
+              capital={country.capital}
+              population={country.population}
+              flag={country.flag ?? ""}
+            />
+          ))}
+        </div>
+      )}
     </section>
-  )
-}
+  );
+};
